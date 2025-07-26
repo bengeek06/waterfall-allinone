@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  waterfall-app:
+    build: .
+    container_name: waterfall-app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Secrets personnalisables (optionnel - générés automatiquement si non fournis)
+      JWT_SECRET: ${JWT_SECRET:-}
+      INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN:-}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      
+      # Variables d'environnement optionnelles pour les APIs
+      FLASK_ENV: ${FLASK_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      # Persistance des données PostgreSQL
+      - postgres_data:/var/lib/postgresql/15/main
+      
+      # Persistance des logs (optionnel)
+      - nginx_logs:/var/log/nginx
+      - postgres_logs:/var/log/postgresql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-k", "https://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  postgres_data:
+    driver: local
+  nginx_logs:
+    driver: local
+  postgres_logs:
+    driver: local

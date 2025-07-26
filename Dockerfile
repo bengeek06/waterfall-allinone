@@ -12,8 +12,8 @@ RUN service postgresql start && \
     su - postgres -c "psql -c \"CREATE DATABASE identity_db;\"" && \
     su - postgres -c "psql -c \"CREATE DATABASE guardian_db;\""
 
-# Install git and openssl
-RUN apt-get install -y git openssl curl
+# Install git, openssl and nginx
+RUN apt-get install -y git openssl curl nginx
 
 # Install Python and pip
 RUN apt-get install -y python3 python3-pip
@@ -80,8 +80,19 @@ RUN useradd -m -s /bin/bash appuser
 RUN chown appuser:appuser /pm-auth-api /pm-identity-api /pm-guardian-api /pm-front
 RUN chown appuser:appuser /pm-auth-api/wait-for-it.sh /pm-identity-api/wait-for-it.sh /pm-guardian-api/wait-for-it.sh
 
-# Expose ports for the applications
-EXPOSE 3000
+# Generate SSL certificate for Nginx
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/ssl/private/nginx-selfsigned.key \
+    -out /etc/ssl/certs/nginx-selfsigned.crt \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+
+# Copy Nginx configuration
+COPY nginx.conf /etc/nginx/sites-available/default
+RUN rm -f /etc/nginx/sites-enabled/default && \
+    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+
+# Expose ports for HTTPS and HTTP
+EXPOSE 80 443 3000
 
 # Start backend and frontend applications
 COPY start-all.sh /start-all.sh

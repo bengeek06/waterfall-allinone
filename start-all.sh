@@ -92,5 +92,9 @@ sudo -u appuser bash -c "
 cd /pm-front
 sudo -u appuser bash -c 'npm start' &
 
+# Start Nginx as reverse proxy
+echo "Starting Nginx reverse proxy..."
+nginx
+
 # Keep container running
 wait
