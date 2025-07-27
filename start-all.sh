@@ -25,7 +25,7 @@ else
 fi
 
 # Ensure appuser owns the .env files
-chown appuser:appuser /pm-auth-api/.env.production /pm-identity-api/.env.production /pm-guardian-api/.env.production 2>/dev/null || true
+chown appuser:appuser /pm-auth-api/.env.production /pm-identity-api/.env.production /pm-guardian-api/.env.production /pm-front/.env.production 2>/dev/null || true
 
 # Add secrets to auth API .env file
 echo "JWT_SECRET=$JWT_SECRET" >> /pm-auth-api/.env.production
@@ -63,7 +63,7 @@ sudo -u appuser bash -c "
     export POSTGRES_PASSWORD='$POSTGRES_PASSWORD'
     ./wait-for-it.sh localhost:5432 --timeout=60 --strict
     flask db upgrade
-    gunicorn -w 4 -b 127.0.0.1:8001 wsgi:app
+    gunicorn -w 4 -b 127.0.0.1:8001 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 wsgi:app
 " &
 
 # Start identity API in background
@@ -74,7 +74,7 @@ sudo -u appuser bash -c "
     export POSTGRES_PASSWORD='$POSTGRES_PASSWORD'
     ./wait-for-it.sh localhost:5432 --timeout=60 --strict
     flask db upgrade
-    gunicorn -w 4 -b 127.0.0.1:8002 wsgi:app
+    gunicorn -w 4 -b 127.0.0.1:8002 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 wsgi:app
 " &
 
 # Start guardian API in background
@@ -85,12 +85,12 @@ sudo -u appuser bash -c "
     export POSTGRES_PASSWORD='$POSTGRES_PASSWORD'
     ./wait-for-it.sh localhost:5432 --timeout=60 --strict
     flask db upgrade
-    gunicorn -w 4 -b 127.0.0.1:8003 wsgi:app
+    gunicorn -w 4 -b 127.0.0.1:8003 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100 wsgi:app
 " &
 
 # Start frontend application
 cd /pm-front
-sudo -u appuser bash -c 'npm start' &
+sudo -u appuser bash -c 'APP_ENV=production npm start' &
 
 # Start Nginx as reverse proxy
 echo "Starting Nginx reverse proxy..."

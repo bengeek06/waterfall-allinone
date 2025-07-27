@@ -61,6 +61,16 @@ RUN pm-guardian-api/venv/bin/pip install gunicorn
 # Clone frontend repository with NextJS 15 fixes
 RUN git clone --branch fix/nextjs15-params-compatibility https://github.com/bengeek06/pm-front.git
 
+# Create .env.production file for frontend with correct service URLs
+RUN echo "APP_ENV=production" > pm-front/.env.production
+RUN echo "NEXT_PUBLIC_AUTH_SERVICE_URL=http://localhost:8001" >> pm-front/.env.production
+RUN echo "NEXT_PUBLIC_IDENTITY_SERVICE_URL=http://localhost:8002" >> pm-front/.env.production
+RUN echo "NEXT_PUBLIC_GUARDIAN_SERVICE_URL=http://localhost:8003" >> pm-front/.env.production
+RUN echo "AUTH_SERVICE_URL=http://localhost:8001" >> pm-front/.env.production
+RUN echo "IDENTITY_SERVICE_URL=http://localhost:8002" >> pm-front/.env.production
+RUN echo "GUARDIAN_SERVICE_URL=http://localhost:8003" >> pm-front/.env.production
+RUN echo "LOG_LEVEL=debug" >> pm-front/.env.production
+
 # Install npm and Node.js
 RUN apt-get install -y npm
 RUN npm install -g n
