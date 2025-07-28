@@ -58,6 +58,34 @@ RUN pm-auth-api/venv/bin/pip install gunicorn
 RUN pm-identity-api/venv/bin/pip install gunicorn
 RUN pm-guardian-api/venv/bin/pip install gunicorn
 
+# Generate secrets and configure everything at build time
+RUN JWT_SECRET=$(openssl rand -hex 32) && \
+    INTERNAL_AUTH_TOKEN=$(openssl rand -hex 32) && \
+    POSTGRES_PASSWORD=$(openssl rand -hex 32) && \
+    echo "Generating secrets..." && \
+    # Add secrets to auth API .env file \
+    echo "JWT_SECRET=$JWT_SECRET" >> pm-auth-api/.env.production && \
+    echo "INTERNAL_AUTH_TOKEN=$INTERNAL_AUTH_TOKEN" >> pm-auth-api/.env.production && \
+    echo "INTERNAL_AUTH_TOKEN=$INTERNAL_AUTH_TOKEN" >> pm-identity-api/.env.production && \
+    # Update database URLs with generated password \
+    sed -i "s|postgresql://postgres:placeholder@localhost/auth_db|postgresql://appdb:$POSTGRES_PASSWORD@localhost:5432/auth_db|g" pm-auth-api/.env.production && \
+    sed -i "s|postgresql://postgres:placeholder@localhost/identity_db|postgresql://appdb:$POSTGRES_PASSWORD@localhost:5432/identity_db|g" pm-identity-api/.env.production && \
+    sed -i "s|postgresql://postgres:placeholder@localhost/guardian_db|postgresql://appdb:$POSTGRES_PASSWORD@localhost:5432/guardian_db|g" pm-guardian-api/.env.production && \
+    # Configure PostgreSQL with the generated password \
+    service postgresql start && \
+    sleep 5 && \
+    su postgres -c "psql -c \"DROP USER IF EXISTS appdb;\" || true" && \
+    su postgres -c "psql -c \"CREATE USER appdb WITH PASSWORD '$POSTGRES_PASSWORD';\"" && \
+    su postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE auth_db TO appdb;\"" && \
+    su postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE identity_db TO appdb;\"" && \
+    su postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE guardian_db TO appdb;\"" && \
+    su postgres -c "psql -d auth_db -c \"GRANT ALL ON SCHEMA public TO appdb;\"" && \
+    su postgres -c "psql -d identity_db -c \"GRANT ALL ON SCHEMA public TO appdb;\"" && \
+    su postgres -c "psql -d guardian_db -c \"GRANT ALL ON SCHEMA public TO appdb;\"" && \
+    # Save the password for runtime use \
+    echo "$POSTGRES_PASSWORD" > /tmp/postgres_password && \
+    service postgresql stop
+
 # Clone frontend repository with NextJS 15 fixes
 RUN git clone --branch fix/nextjs15-params-compatibility https://github.com/bengeek06/pm-front.git
 
